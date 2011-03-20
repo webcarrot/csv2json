@@ -296,6 +296,59 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
  */
 int addChar(char * * char_pointer, char * current_char)
 {
+	switch(*current_char)
+	{
+		case '\\':
+		{
+			addCharToCell(char_pointer,'\\');
+			addCharToCell(char_pointer,'\\');
+			return 0;
+		}
+		case '\n':
+		{
+			addCharToCell(char_pointer,'\\');
+			addCharToCell(char_pointer,'n');
+			return 0;
+		}
+		case '\t':
+		{
+			addCharToCell(char_pointer,'\\');
+			addCharToCell(char_pointer,'t');
+			return 0;
+		}
+		case '\r':
+		{
+			addCharToCell(char_pointer,'\\');
+			addCharToCell(char_pointer,'r');
+			return 0;
+		}
+		case '\b':
+		{
+			addCharToCell(char_pointer,'\\');
+			addCharToCell(char_pointer,'b');
+			return 0;
+		}
+		case '\f':
+		{
+			addCharToCell(char_pointer,'\\');
+			addCharToCell(char_pointer,'f');
+			return 0;
+		}
+		case '/':
+		case '"':
+		{
+			addCharToCell(char_pointer,'\\');
+			addCharToCell(char_pointer,*current_char);
+			return 0;
+		}
+		default:
+		{
+			/**
+			* @todo add support for other chars
+			*/
+			break;
+		}
+	}
 	if ((*current_char >= 0x20) && (*current_char <= 0x7F))
 	{
 		addCharToCell(char_pointer,*current_char);
@@ -345,62 +398,6 @@ int addChar(char * * char_pointer, char * current_char)
 		 * @todo add support for utf?? chars
 		 */
 		return 5;
-	}
-	else
-	{
-		switch(*current_char)
-		{
-			case '\\':
-			{
-				addCharToCell(char_pointer,'\\');
-				addCharToCell(char_pointer,'\\');
-				break;
-			}
-			case '\n':
-			{
-				addCharToCell(char_pointer,'\\');
-				addCharToCell(char_pointer,'n');
-				break;
-			}
-			case '\t':
-			{
-				addCharToCell(char_pointer,'\\');
-				addCharToCell(char_pointer,'t');
-				break;
-			}
-			case '\r':
-			{
-				addCharToCell(char_pointer,'\\');
-				addCharToCell(char_pointer,'r');
-				break;
-			}
-			case '\b':
-			{
-				addCharToCell(char_pointer,'\\');
-				addCharToCell(char_pointer,'b');
-				break;
-			}
-			case '\f':
-			{
-				addCharToCell(char_pointer,'\\');
-				addCharToCell(char_pointer,'f');
-				break;
-			}
-			case '/':
-			case '"':
-			{
-				addCharToCell(char_pointer,'\\');
-				addCharToCell(char_pointer,*current_char);
-				break;
-			}
-			default:
-			{
-				/**
-				* @todo add support for other chars
-				*/
-				break;
-			}
-		}
 	}
 	return 0;
 }
