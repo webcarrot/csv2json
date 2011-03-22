@@ -222,6 +222,18 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 				writeTo(cell_content,output_file_handler);
 				cell_content_char=cell_content;
 				cell_without_sep = 0;
+				if(*current_char == row_separator)
+				{
+					row_begin_paresed = 0;
+					if(*next_char == '\0' || i+1 == input_file_handler_size)
+					{
+						break;
+					}
+					else
+					{
+						writeTo(",\n",output_file_handler);
+					}
+				}
 			}
 			else
 			{
