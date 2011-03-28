@@ -467,7 +467,7 @@ void writeTo(char * output_string,FILE * output_file_handler)
  */
 void help(void)
 {
-	fputs("ccsv2json params:\
+	fputs("csv2json params:\
 	\n\t-i path to input file [required]\
 	\n\t-o path to output file [default:NULL] [optional] [if not set write output to stdout]\
 	\n\t-r row separator [default:'\\n']\
