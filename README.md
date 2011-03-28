@@ -25,7 +25,7 @@ Params:
 
 TODO:
 -----
-* Add better support for invalid CSV files:
+### Add better support for invalid CSV files:
 Now for a CSV file with content such as:
 	"bla bla bla","bla bla bla"
 	","bla bla"
@@ -48,4 +48,4 @@ shoud be:
 	[
 	["bla bla bla","bla bla bla\",","bla bla"]
 	]
-* Add support for header row
+### Add support for header row
