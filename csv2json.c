@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <getopt.h>
 
 const SUCCESS = 0;
 const ERROR_BAD_ARG = 1;
@@ -32,6 +33,7 @@ const ERROR_INVALID_INPUT_FILE = 2;
 const ERROR_INVALID_OUTPUT_FILE = 3;
 const ERROR_MEMORY = 4;
 const ERROR_READING_FILE = 5;
+const char PROGRAM_VERSION[32] = "0.2";
 
 int main(int argc,char **argv);
 int parseFile(char *input_file,char *output_file,char row_separator,char col_separator,char text_separator,int cell_lenght);
@@ -40,35 +42,56 @@ void addCharToCell(char * * char_pointer, char char_value);
 void addStringToCell(char * * char_pointer, char string_value[10]);
 void writeTo(char * output_string,FILE * output_file_handler);
 void help(void);
+void version(void);
 
 /**
  * main - read params etc.
- * @param *char -i path to input file [required]
- * @param *char -o path to output file [default:NULL] [if not set write output to stdout]
- * @param char -r row separator [default:$'\n']
- * @param char -c col separator [default:',']
- * @param char -t text separator [default:'"']
+ * @param *char -i/--input-file path to input file [required]
+ * @param *char -o/--output-file path to output file [default:NULL] [if not set write output to stdout]
+ * @param char -r/--row-sep row separator [default:$'\n']
+ * @param char -c/--col-sep col separator [default:',']
+ * @param char -t/--text-sep text separator [default:'"']
  * @param int -l how many chars can exist in single cell. DANGEROUS DO NOT SET TO SMALL. Escaped utf8 consume 4 chars extra and special chars 1 char extra. [default:1000000]
- * @param void -h print help screen
+ * @param void -h/--help print help screen
+ * @param void -v/--version print version screen
  * @return int
  */
 int main(int argc,char **argv)
 {
+	// set default params values
 	char *input_file = NULL;
 	char *output_file = NULL;
 	char row_separator = '\n';
 	char col_separator = ',';
 	char text_separator = '"';
 	int cell_lenght = 1000000;
+	// get params
 	int c;
+	int option_index = 0;
 	opterr = 0;
-	while ((c = getopt (argc, argv, "i:o:c:r:t:l:h")) != -1)
+	static struct option long_options[] =
+	{
+		{"input-file",	required_argument,	0,	'i'},
+		{"output-file",	required_argument,	0,	'o'},
+		{"row-sep",			required_argument,	0,	'r'},
+		{"col-sep",			required_argument,	0,	'c'},
+		{"text-sep",		required_argument,	0,	't'},
+		{"help",				no_argument,				0,	'h'},
+		{"version",			no_argument,				0,	'v'},
+		{0, 0, 0, 0}
+	};
+	while ((c = getopt_long(argc, argv, "i:o:c:r:t:l:hv",long_options, &option_index)) != -1)
 	{
 		switch (c)
 		{
 			case 'h':
 			{
 				help();
+				return SUCCESS;
+			}
+			case 'v':
+			{
+				version();
 				return SUCCESS;
 			}
 			case 'i':
@@ -124,12 +147,15 @@ int main(int argc,char **argv)
 			}
 		}
 	}
+	// check params
 	if(input_file != NULL && cell_lenght > 2)
 	{
+		// parse file
 		return parseFile(input_file,output_file,row_separator,col_separator,text_separator,cell_lenght);
 	}
 	else
 	{
+		// print error
 		fputs ("Option -i required.",stderr);
 		help();
 		return ERROR_BAD_ARG;
@@ -148,6 +174,7 @@ int main(int argc,char **argv)
  */
 int parseFile(char *input_file,char *output_file,char row_separator,char col_separator,char text_separator,int cell_lenght)
 {
+	// input file
 	FILE * input_file_handler = NULL, * output_file_handler = NULL;
 	long input_file_handler_size;
 	char * file_content;
@@ -175,7 +202,7 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 		return ERROR_READING_FILE;
 	}
 	fclose (input_file_handler);
-	// outpufile
+	// output file
 	if(output_file != NULL)
 	{
 		output_file_handler = fopen ( output_file , "w" );
@@ -185,6 +212,7 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 			return ERROR_INVALID_OUTPUT_FILE;
 		}
 	}
+	// parse data
 	long int i=0;
 	char cell_content[cell_lenght];
 	char *current_char = NULL,*next_char = NULL,*cell_content_char = cell_content;
@@ -291,10 +319,13 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 		}
 	}
 	writeTo("\n]\n",output_file_handler);
+	// parse end
 	if(output_file_handler != NULL)
 	{
+		// close output file
 		fclose (output_file_handler);
 	}
+	// free memory
 	free (file_content);
 	return SUCCESS;
 }
@@ -422,7 +453,7 @@ int addChar(char * * char_pointer, char * current_char)
  */
 void addCharToCell(char * * char_pointer, char char_value)
 {
-	(*(*char_pointer)) =char_value;
+	(*(*char_pointer)) = char_value;
 	(*char_pointer)++;
 }
 
@@ -468,12 +499,37 @@ void writeTo(char * output_string,FILE * output_file_handler)
 void help(void)
 {
 	fputs("csv2json params:\
-	\n\t-i path to input file [required]\
-	\n\t-o path to output file [default:NULL] [optional] [if not set write output to stdout]\
-	\n\t-r row separator [default:$'\\n']\
-	\n\t-c col separator [default:',']\
-	\n\t-t text separator [default:'\"']\
-	\n\t-l how many chars can exist in single cell. DANGEROUS DO NOT SET TO SMALL. Escaped utf8 consume 4 chars extra and special chars 1 char extra. [default:1000000]\
-	\n\t-h print help screen\n",stdout);
+\n-i\n--input-file\tpath to input file [required]\
+\n-o\n--output-file\tpath to output file [default:NULL] [optional] [if not set write output to stdout]\
+\n-r\n--row-sep\trow separator [default:$'\\n']\
+\n-c\n--col-sep\tcol separator [default:',']\
+\n-t\n--text-sep\ttext separator [default:'\"']\
+\n-l\t\thow many chars can exist in single cell. DANGEROUS DO NOT SET TO SMALL.\n\t\tEscaped utf8 consume 4 chars extra and special chars 1 char extra. [default:1000000]\
+\n-h\n--help\t\tprint help screen\
+\n-v\n--version\tprint version screen\n\n",stdout);
 	return;
 }
+
+/**
+ * version - print version info
+ * @return void
+ */
+void version(void)
+{
+	printf("\
+cvs2json version %s\
+\nCopyright (C) 2011 Wojciech Wierchoła <admin@webcarrot.pl>.\
+\n\nThis program is free software; you can redistribute it and/or\
+\nmodify it under the terms of the GNU General Public License as\
+\npublished by the Free Software Foundation; either version 3 of\
+\nthe License, or (at your option) any later version.\
+\n\nThis program is distributed in the hope that it will be useful,\
+\nbut WITHOUT ANY WARRANTY; without even the implied warranty of\
+\nMERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\
+\nGNU General Public License for more details.\
+\n\nYou should have received a copy of the GNU General Public License\
+\nalong with this program.  If not, see <http://www.gnu.org/licenses/>.\
+\n\n",PROGRAM_VERSION);
+	return;
+}
+
