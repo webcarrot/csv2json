@@ -499,14 +499,22 @@ void writeTo(char * output_string,FILE * output_file_handler)
 void help(void)
 {
 	fputs("csv2json params:\
-\n-i\n--input-file\tpath to input file [required]\
-\n-o\n--output-file\tpath to output file [default:NULL] [optional] [if not set write output to stdout]\
-\n-r\n--row-sep\trow separator [default:$'\\n']\
-\n-c\n--col-sep\tcol separator [default:',']\
-\n-t\n--text-sep\ttext separator [default:'\"']\
-\n-l\t\thow many chars can exist in single cell. DANGEROUS DO NOT SET TO SMALL.\n\t\tEscaped utf8 consume 4 chars extra and special chars 1 char extra. [default:1000000]\
-\n-h\n--help\t\tprint help screen\
-\n-v\n--version\tprint version screen\n\n",stdout);
+\n-i\
+\n--input-file   path to input file [required]\
+\n-o\
+\n--output-file  path to output file [default:NULL] [optional] [if not set write output to stdout]\
+\n-r\
+\n--row-sep      row separator [default:$'\\n']\
+\n-c\
+\n--col-sep      col separator [default:',']\
+\n-t\
+\n--text-sep     text separator [default:'\"']\
+\n-l             how many chars can exist in single cell. DANGEROUS DO NOT SET TO SMALL.\
+\n               Escaped utf8 consume 4 chars extra and special chars 1 char extra. [default:1000000]\
+\n-h\
+\n--help         print help screen\
+\n-v\
+\n--version      print version screen\n\n",stdout);
 	return;
 }
 
