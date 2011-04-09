@@ -1,6 +1,6 @@
 /**
  * 
- * Copyright 2011 Wojciech Wierchoła <admin@webcarrot.pl>
+ * Copyright (C) 2011 Wojciech Wierchoła <admin@webcarrot.pl>
  * 
  * Description: writen in C, CSV file to JSON file/string converter
  * with utf8 support.
@@ -46,14 +46,6 @@ void version(void);
 
 /**
  * main - read params etc.
- * @param *char -i/--input-file path to input file [required]
- * @param *char -o/--output-file path to output file [default:NULL] [if not set write output to stdout]
- * @param char -r/--row-sep row separator [default:$'\n']
- * @param char -c/--col-sep col separator [default:',']
- * @param char -t/--text-sep text separator [default:'"']
- * @param int -l how many chars can exist in single cell. DANGEROUS DO NOT SET TO SMALL. Escaped utf8 consume 4 chars extra and special chars 1 char extra. [default:1000000]
- * @param void -h/--help print help screen
- * @param void -v/--version print version screen
  * @return int
  */
 int main(int argc,char **argv)
@@ -71,13 +63,13 @@ int main(int argc,char **argv)
 	opterr = 0;
 	static struct option long_options[] =
 	{
-		{"input-file",	required_argument,	0,	'i'},
-		{"output-file",	required_argument,	0,	'o'},
-		{"row-sep",			required_argument,	0,	'r'},
-		{"col-sep",			required_argument,	0,	'c'},
-		{"text-sep",		required_argument,	0,	't'},
-		{"help",				no_argument,				0,	'h'},
-		{"version",			no_argument,				0,	'v'},
+		{"input-file",  required_argument, 0, 'i'},
+		{"output-file", required_argument, 0, 'o'},
+		{"row-sep",     required_argument, 0, 'r'},
+		{"col-sep",     required_argument, 0, 'c'},
+		{"text-sep",    required_argument, 0, 't'},
+		{"help",        no_argument,       0, 'h'},
+		{"version",     no_argument,       0, 'v'},
 		{0, 0, 0, 0}
 	};
 	while ((c = getopt_long(argc, argv, "i:o:c:r:t:l:hv",long_options, &option_index)) != -1)
@@ -248,7 +240,7 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 				addCharToCell(&cell_content_char,*current_char == col_separator?',':']');
 				addCharToCell(&cell_content_char,'\0');
 				writeTo(cell_content,output_file_handler);
-				cell_content_char=cell_content;
+				cell_content_char = cell_content;
 				cell_without_sep = 0;
 				if(*current_char == row_separator)
 				{
@@ -261,6 +253,10 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 					{
 						writeTo(",\n",output_file_handler);
 					}
+				}
+				else if(*current_char == col_separator)
+				{
+					i--;
 				}
 			}
 			else
@@ -455,6 +451,7 @@ void addCharToCell(char * * char_pointer, char char_value)
 {
 	(*(*char_pointer)) = char_value;
 	(*char_pointer)++;
+	return;
 }
 
 /**
@@ -471,6 +468,7 @@ void addStringToCell(char * * char_pointer, char string_value[20])
 		addCharToCell(char_pointer,*c);
 		c++;
 	}
+	return;
 }
 
 /**
@@ -526,7 +524,7 @@ void version(void)
 {
 	printf("\
 cvs2json version %s\
-\nCopyright (C) 2011 Wojciech Wierchoła <admin@webcarrot.pl>.\
+\nCopyright (C) 2011 Wojciech Wierchola <admin@webcarrot.pl>.\
 \n\nThis program is free software; you can redistribute it and/or\
 \nmodify it under the terms of the GNU General Public License as\
 \npublished by the Free Software Foundation; either version 3 of\
