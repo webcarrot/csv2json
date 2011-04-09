@@ -33,13 +33,15 @@ const ERROR_INVALID_INPUT_FILE = 2;
 const ERROR_INVALID_OUTPUT_FILE = 3;
 const ERROR_MEMORY = 4;
 const ERROR_READING_FILE = 5;
+const ERROR_CELL_LENGTH = 6;
+
 const char PROGRAM_VERSION[32] = "0.2";
 
 int main(int argc,char **argv);
 int parseFile(char *input_file,char *output_file,char row_separator,char col_separator,char text_separator,int cell_lenght);
-int addChar(char * * char_pointer, char  * current_char);
-void addCharToCell(char * * char_pointer, char char_value);
-void addStringToCell(char * * char_pointer, char string_value[10]);
+int addChar(char * * char_pointer, char  * current_char, char * cell_content_end);
+void addCharToCell(char * * char_pointer, char char_value, char * cell_content_end);
+void addStringToCell(char * * char_pointer, char string_value[10], char * cell_content_end);
 void writeTo(char * output_string,FILE * output_file_handler);
 void help(void);
 void version(void);
@@ -207,7 +209,7 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 	// parse data
 	long int i=0;
 	char cell_content[cell_lenght];
-	char *current_char = NULL,*next_char = NULL,*cell_content_char = cell_content;
+	char *current_char = NULL,*next_char = NULL,*cell_content_char = cell_content,*cell_content_end=&(cell_content[cell_lenght-1]);
 	short int cell_with_sep = 0;
 	short int cell_without_sep = 0;
 	short int row_begin_paresed = 0;
@@ -220,25 +222,25 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 		{
 			if(*current_char == text_separator && (*next_char == '\0'  || *next_char == row_separator || *next_char == col_separator))
 			{
-				addCharToCell(&cell_content_char,'"');
-				addCharToCell(&cell_content_char,*next_char == col_separator?',':']');
-				addCharToCell(&cell_content_char,'\0');
+				addCharToCell(&cell_content_char,'"',cell_content_end);
+				addCharToCell(&cell_content_char,*next_char == col_separator?',':']',cell_content_end);
+				addCharToCell(&cell_content_char,'\0',cell_content_end);
 				writeTo(cell_content,output_file_handler);
 				cell_content_char=cell_content;
 				cell_with_sep = 0;
 			}
 			else
 			{
-				i+=addChar(&cell_content_char,current_char);
+				i+=addChar(&cell_content_char,current_char,cell_content_end);
 			}
 		}
 		else if(cell_without_sep)
 		{
 			if(*current_char == '\0'  || *current_char == row_separator || *current_char == col_separator)
 			{
-				addCharToCell(&cell_content_char,'"');
-				addCharToCell(&cell_content_char,*current_char == col_separator?',':']');
-				addCharToCell(&cell_content_char,'\0');
+				addCharToCell(&cell_content_char,'"',cell_content_end);
+				addCharToCell(&cell_content_char,*current_char == col_separator?',':']',cell_content_end);
+				addCharToCell(&cell_content_char,'\0',cell_content_end);
 				writeTo(cell_content,output_file_handler);
 				cell_content_char = cell_content;
 				cell_without_sep = 0;
@@ -261,7 +263,7 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 			}
 			else
 			{
-				i+=addChar(&cell_content_char,current_char);
+				i+=addChar(&cell_content_char,current_char,cell_content_end);
 			}
 		}
 		else if(*current_char == text_separator)
@@ -270,9 +272,9 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 			if(!row_begin_paresed)
 			{
 				row_begin_paresed = 1;
-				addCharToCell(&cell_content_char,'[');
+				addCharToCell(&cell_content_char,'[',cell_content_end);
 			}
-			addCharToCell(&cell_content_char,'"');
+			addCharToCell(&cell_content_char,'"',cell_content_end);
 		}
 		else if(*current_char == row_separator)
 		{
@@ -308,10 +310,10 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 			if(!row_begin_paresed)
 			{
 				row_begin_paresed = 1;
-				addCharToCell(&cell_content_char,'[');
+				addCharToCell(&cell_content_char,'[',cell_content_end);
 			}
-			addCharToCell(&cell_content_char,'"');
-			i+=addChar(&cell_content_char,current_char);
+			addCharToCell(&cell_content_char,'"',cell_content_end);
+			i+=addChar(&cell_content_char,current_char,cell_content_end);
 		}
 	}
 	writeTo("\n]\n",output_file_handler);
@@ -333,51 +335,51 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
  * @param *char current_char pointer to char array created from input file
  * @return int - how many chars should be skipped
  */
-int addChar(char * * char_pointer, char * current_char)
+int addChar(char * * char_pointer, char * current_char, char * cell_content_end)
 {
 	switch(*current_char)
 	{
 		case '\\':
 		{
-			addCharToCell(char_pointer,'\\');
-			addCharToCell(char_pointer,'\\');
+			addCharToCell(char_pointer,'\\',cell_content_end);
+			addCharToCell(char_pointer,'\\',cell_content_end);
 			return 0;
 		}
 		case '\n':
 		{
-			addCharToCell(char_pointer,'\\');
-			addCharToCell(char_pointer,'n');
+			addCharToCell(char_pointer,'\\',cell_content_end);
+			addCharToCell(char_pointer,'n',cell_content_end);
 			return 0;
 		}
 		case '\t':
 		{
-			addCharToCell(char_pointer,'\\');
-			addCharToCell(char_pointer,'t');
+			addCharToCell(char_pointer,'\\',cell_content_end);
+			addCharToCell(char_pointer,'t',cell_content_end);
 			return 0;
 		}
 		case '\r':
 		{
-			addCharToCell(char_pointer,'\\');
-			addCharToCell(char_pointer,'r');
+			addCharToCell(char_pointer,'\\',cell_content_end);
+			addCharToCell(char_pointer,'r',cell_content_end);
 			return 0;
 		}
 		case '\b':
 		{
-			addCharToCell(char_pointer,'\\');
-			addCharToCell(char_pointer,'b');
+			addCharToCell(char_pointer,'\\',cell_content_end);
+			addCharToCell(char_pointer,'b',cell_content_end);
 			return 0;
 		}
 		case '\f':
 		{
-			addCharToCell(char_pointer,'\\');
-			addCharToCell(char_pointer,'f');
+			addCharToCell(char_pointer,'\\',cell_content_end);
+			addCharToCell(char_pointer,'f',cell_content_end);
 			return 0;
 		}
 		case '/':
 		case '"':
 		{
-			addCharToCell(char_pointer,'\\');
-			addCharToCell(char_pointer,*current_char);
+			addCharToCell(char_pointer,'\\',cell_content_end);
+			addCharToCell(char_pointer,*current_char,cell_content_end);
 			return 0;
 		}
 		default:
@@ -390,7 +392,7 @@ int addChar(char * * char_pointer, char * current_char)
 	}
 	if ((*current_char >= 0x20) && (*current_char <= 0x7F))
 	{
-		addCharToCell(char_pointer,*current_char);
+		addCharToCell(char_pointer,*current_char,cell_content_end);
 		return 0;
 	}
 	else if ((*current_char & 0xE0) == 0xC0)
@@ -402,7 +404,7 @@ int addChar(char * * char_pointer, char * current_char)
 			(0x07 & *current_char >> 2),
 			((0xC0 & *current_char << 6) | (0x3F & *(current_char+1)))
 		);
-		addStringToCell(char_pointer,utf16);
+		addStringToCell(char_pointer,utf16,cell_content_end);
 		return 1;
 	}
 	else if((*current_char & 0xF0) == 0xE0)
@@ -414,7 +416,7 @@ int addChar(char * * char_pointer, char * current_char)
 			((0xF0 & *current_char << 4) | (0x0F & *(current_char+1) >> 2)),
 			((0xC0 & *(current_char+1) << 6) | (0x7F & *(current_char+2)))
 		);
-		addStringToCell(char_pointer,utf16);
+		addStringToCell(char_pointer,utf16,cell_content_end);
 		return 2;
 	}
 	else if((*current_char & 0xF8) == 0xF0)
@@ -447,9 +449,14 @@ int addChar(char * * char_pointer, char * current_char)
  * @param char char_value char to add to char_pointer array
  * @return void
  */
-void addCharToCell(char * * char_pointer, char char_value)
+void addCharToCell(char * * char_pointer, char char_value, char * cell_content_end)
 {
 	(*(*char_pointer)) = char_value;
+	if(*char_pointer == cell_content_end)
+	{
+		fputs ("\nTo low -l (chars in single cell) parameter value. Output is corrupted!\n\n",stderr);
+		exit(ERROR_CELL_LENGTH);
+	}
 	(*char_pointer)++;
 	return;
 }
@@ -460,12 +467,12 @@ void addCharToCell(char * * char_pointer, char char_value)
  * @param char string_value chars array to add to char_pointer array
  * @return void
  */
-void addStringToCell(char * * char_pointer, char string_value[20])
+void addStringToCell(char * * char_pointer, char string_value[20], char * cell_content_end)
 {
 	char * c = string_value;
 	while( *c != '\0')
 	{
-		addCharToCell(char_pointer,*c);
+		addCharToCell(char_pointer,*c,cell_content_end);
 		c++;
 	}
 	return;
@@ -507,7 +514,7 @@ void help(void)
 \n--col-sep      col separator [default:',']\
 \n-t\
 \n--text-sep     text separator [default:'\"']\
-\n-l             how many chars can exist in single cell. DANGEROUS DO NOT SET TO SMALL.\
+\n-l             how many chars can exist in single cell. DO NOT SET TO SMALL.\
 \n               Escaped utf8 consume 4 chars extra and special chars 1 char extra. [default:1000000]\
 \n-h\
 \n--help         print help screen\

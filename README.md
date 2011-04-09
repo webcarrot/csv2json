@@ -29,7 +29,7 @@ Params:
 	--col-sep      col separator [default:',']
 	-t
 	--text-sep     text separator [default:'"']
-	-l             how many chars can exist in single cell. DANGEROUS DO NOT SET TO SMALL.
+	-l             how many chars can exist in single cell. DO NOT SET TO SMALL.
 	               Escaped utf8 consume 4 chars extra and special chars 1 char extra. [default:1000000]
 	-h
 	--help         print help screen
