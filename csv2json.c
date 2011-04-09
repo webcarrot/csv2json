@@ -45,7 +45,7 @@ void help(void);
  * main - read params etc.
  * @param *char -i path to input file [required]
  * @param *char -o path to output file [default:NULL] [if not set write output to stdout]
- * @param char -r row separator [default:'\n']
+ * @param char -r row separator [default:$'\n']
  * @param char -c col separator [default:',']
  * @param char -t text separator [default:'"']
  * @param int -l how many chars can exist in single cell. DANGEROUS DO NOT SET TO SMALL. Escaped utf8 consume 4 chars extra and special chars 1 char extra. [default:1000000]
@@ -470,7 +470,7 @@ void help(void)
 	fputs("csv2json params:\
 	\n\t-i path to input file [required]\
 	\n\t-o path to output file [default:NULL] [optional] [if not set write output to stdout]\
-	\n\t-r row separator [default:'\\n']\
+	\n\t-r row separator [default:$'\\n']\
 	\n\t-c col separator [default:',']\
 	\n\t-t text separator [default:'\"']\
 	\n\t-l how many chars can exist in single cell. DANGEROUS DO NOT SET TO SMALL. Escaped utf8 consume 4 chars extra and special chars 1 char extra. [default:1000000]\
