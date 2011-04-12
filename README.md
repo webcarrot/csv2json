@@ -3,21 +3,27 @@ csv2json
 
 Description:
 ------------
+
 Writen in C, CSV file to JSON file/string converter with utf8 support ( utf16/32 is not supported).
 
 Simple usage:
 -------------
+
 	csv2json -i input.csv > output.json
 
 Complex usage:
 ------------
+
 	csv2json -i input.csv -o output.json -r $'\n' -c ',' -t '"' -l 9000000
+
 or
+
 	csv2json --input-file input.csv --output-file output.json --row-sep $'\n' --col-sep ',' --text-sep '"' -l 9000000
 
 
 Params:
 -------
+
 	csv2json params:
 	-i
 	--input-file   path to input file [required]
@@ -38,7 +44,9 @@ Params:
 
 TODO:
 -----
+
 ### Add better support for invalid CSV files:
+
 Now for a CSV file with content such as:
 
 	"bla bla bla","bla bla bla"
@@ -74,4 +82,5 @@ should be:
 	]
 
 ### Add support for header row
+
 ### Add support for utf16/32
