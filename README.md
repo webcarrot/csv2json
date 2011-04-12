@@ -40,25 +40,38 @@ TODO:
 -----
 ### Add better support for invalid CSV files:
 Now for a CSV file with content such as:
+
 	"bla bla bla","bla bla bla"
 	","bla bla"
+
 returns:
+
 	[
 	["bla bla bla","bla bla bla"],
 	[",\"bla bla"]
 	]
+
 should be:
+
 	[
 	["bla bla bla","bla bla bla\"\n","bla bla"]
 	]
+
 Or for CSV content like:
+
 	"bla bla bla","bla bla bla",","bla bla"
+
 returns:
+
 	[
 	["bla bla bla","bla bla bla",",\"bla bla"]
 	]
+
 should be:
+
 	[
 	["bla bla bla","bla bla bla\",","bla bla"]
 	]
+
 ### Add support for header row
+### Add support for utf16/32
