@@ -11,14 +11,19 @@ Simple usage:
 
 	csv2json -i input.csv > output.json
 
+with keys:
+
+	csv2json -i input.csv -k 999 > output.json
+
+
 Complex usage:
 ------------
 
-	csv2json -i input.csv -o output.json -r $'\n' -c ',' -t '"' -l 9000000
+	csv2json -i input.csv -o output.json -r $'\n' -c ',' -t '"' -l 9000000 -k 99
 
 or
 
-	csv2json --input-file input.csv --output-file output.json --row-sep $'\n' --col-sep ',' --text-sep '"' -l 9000000
+	csv2json --input-file input.csv --output-file output.json --row-sep $'\n' --col-sep ',' --text-sep '"' -l 9000000 --keys 99
 
 
 Params:
@@ -35,8 +40,11 @@ Params:
 	--col-sep      col separator [default:',']
 	-t
 	--text-sep     text separator [default:'"']
-	-l             how many chars can exist in single cell. DO NOT SET TO SMALL.
+	-l
+	--cell-length  how many chars can exist in single cell. DO NOT SET TO SMALL.
 	               Escaped utf8 consume 4 chars extra and special chars 1 char extra. [default:1000000]
+	-k
+	--keys         set maximum keys number and use first row values as keys for other rows [default:0]
 	-h
 	--help         print help screen
 	-v
@@ -44,43 +52,5 @@ Params:
 
 TODO:
 -----
-
-### Add better support for invalid CSV files:
-
-Now for a CSV file with content such as:
-
-	"bla bla bla","bla bla bla"
-	","bla bla"
-
-returns:
-
-	[
-	["bla bla bla","bla bla bla"],
-	[",\"bla bla"]
-	]
-
-should be:
-
-	[
-	["bla bla bla","bla bla bla\"\n","bla bla"]
-	]
-
-Or for CSV content like:
-
-	"bla bla bla","bla bla bla",","bla bla"
-
-returns:
-
-	[
-	["bla bla bla","bla bla bla",",\"bla bla"]
-	]
-
-should be:
-
-	[
-	["bla bla bla","bla bla bla\",","bla bla"]
-	]
-
-### Add support for header row
 
 ### Add support for utf16/32

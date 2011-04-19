@@ -1,10 +1,10 @@
 /**
- * 
+ *
  * Copyright (C) 2011 Wojciech Wierchoła <admin@webcarrot.pl>
- * 
+ *
  * Description: writen in C, CSV file to JSON file/string converter
  * with utf8 support.
- * 
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation; either version 3 of
@@ -17,9 +17,8 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * 
+ *
  */
-
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,6 +26,7 @@
 #include <string.h>
 #include <getopt.h>
 
+// return codes
 const SUCCESS = 0;
 const ERROR_BAD_ARG = 1;
 const ERROR_INVALID_INPUT_FILE = 2;
@@ -35,14 +35,27 @@ const ERROR_MEMORY = 4;
 const ERROR_READING_FILE = 5;
 const ERROR_CELL_LENGTH = 6;
 
-const char PROGRAM_VERSION[32] = "0.2";
+// version
+const char PROGRAM_VERSION[32] = "0.3";
 
+// main functions
 int main(int argc,char **argv);
-int parseFile(char *input_file,char *output_file,char row_separator,char col_separator,char text_separator,int cell_lenght);
+int parseFile(char *input_file,char *output_file,char row_separator,char col_separator,char text_separator,int cell_lenght,short int keys_number);
+
+// char functions
 int addChar(char * * char_pointer, char  * current_char, char * cell_content_end);
 void addCharToCell(char * * char_pointer, char char_value, char * cell_content_end);
 void addStringToCell(char * * char_pointer, char string_value[10], char * cell_content_end);
+
+// key functions
+void addUnknownKeyCol(char * * keys, int col, int cell_lenght);
+void writeCellToKey(char * output_string, char * * key);
+
+// cell functions
+void writeCellTo(char * output_string, char * key_string,FILE * output_file_handler);
 void writeTo(char * output_string,FILE * output_file_handler);
+
+// other
 void help(void);
 void version(void);
 
@@ -59,22 +72,25 @@ int main(int argc,char **argv)
 	char col_separator = ',';
 	char text_separator = '"';
 	int cell_lenght = 1000000;
+	short int keys_number = 0;
 	// get params
 	int c;
 	int option_index = 0;
 	opterr = 0;
 	static struct option long_options[] =
 	{
-		{"input-file",  required_argument, 0, 'i'},
-		{"output-file", required_argument, 0, 'o'},
-		{"row-sep",     required_argument, 0, 'r'},
-		{"col-sep",     required_argument, 0, 'c'},
-		{"text-sep",    required_argument, 0, 't'},
-		{"help",        no_argument,       0, 'h'},
-		{"version",     no_argument,       0, 'v'},
+		{"input-file",   required_argument, 0, 'i'},
+		{"output-file",  required_argument, 0, 'o'},
+		{"row-sep",      required_argument, 0, 'r'},
+		{"col-sep",      required_argument, 0, 'c'},
+		{"text-sep",     required_argument, 0, 't'},
+		{"cell-length",  required_argument, 0, 'l'},
+ 		{"keys",         required_argument, 0, 'k'},
+		{"help",         no_argument,       0, 'h'},
+		{"version",      no_argument,       0, 'v'},
 		{0, 0, 0, 0}
 	};
-	while ((c = getopt_long(argc, argv, "i:o:c:r:t:l:hv",long_options, &option_index)) != -1)
+	while ((c = getopt_long(argc, argv, "i:o:c:r:t:l:k:hv",long_options, &option_index)) != -1)
 	{
 		switch (c)
 		{
@@ -87,6 +103,11 @@ int main(int argc,char **argv)
 			{
 				version();
 				return SUCCESS;
+			}
+			case 'k':
+			{
+				keys_number = atoi(optarg);
+				break;
 			}
 			case 'i':
 			{
@@ -120,7 +141,7 @@ int main(int argc,char **argv)
 			}
 			case '?':
 			{
-				if (optopt == 'i' || optopt == 'o' || optopt == 'c' || optopt == 'r' || optopt == 't' || optopt == 'l')
+				if (optopt == 'i' || optopt == 'o' || optopt == 'c' || optopt == 'r' || optopt == 't' || optopt == 'l' || optopt == 'f')
 				{
 					fprintf (stderr, "Option -%c requires an argument.\n", optopt);
 				}
@@ -142,15 +163,22 @@ int main(int argc,char **argv)
 		}
 	}
 	// check params
-	if(input_file != NULL && cell_lenght > 2)
+	if(input_file != NULL && ((cell_lenght && cell_lenght > 20) || (!cell_lenght && cell_lenght > 6)))
 	{
 		// parse file
-		return parseFile(input_file,output_file,row_separator,col_separator,text_separator,cell_lenght);
+		return parseFile(input_file,output_file,row_separator,col_separator,text_separator,cell_lenght,keys_number);
 	}
 	else
 	{
 		// print error
-		fputs ("Option -i required.",stderr);
+		if(input_file == NULL)
+		{
+			fputs ("Option -i required.\n",stderr);
+		}
+		if(!((cell_lenght && cell_lenght > 20) || (!cell_lenght && cell_lenght > 6)))
+		{
+			fputs ("To low -l/--cell-length parameter value.\n",stderr);
+		}
 		help();
 		return ERROR_BAD_ARG;
 	}
@@ -164,9 +192,10 @@ int main(int argc,char **argv)
  * @param char col_separator col separator [default:',']
  * @param char text_separator text separator [default:'"']
  * @param int cell_lenght how many chars can exist in single cell [default:1000000]
+ * @param short int keys_number set maximum keys number and use first row values as keys for values [default:0]
  * @return int
  */
-int parseFile(char *input_file,char *output_file,char row_separator,char col_separator,char text_separator,int cell_lenght)
+int parseFile(char *input_file,char *output_file,char row_separator,char col_separator,char text_separator,int cell_lenght,short int keys_number)
 {
 	// input file
 	FILE * input_file_handler = NULL, * output_file_handler = NULL;
@@ -207,12 +236,33 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 		}
 	}
 	// parse data
+	// keys ?
+	char right_row_delimiter[2];
+	char left_row_delimiter[2];
+	right_row_delimiter[1] = '\0';
+	left_row_delimiter[1] = '\0';
+	char * keys[keys_number];
+	int col = 0;
+	short int keys_parsed = 0;
+	int known_keys = 0;
+	if(keys_number)
+	{
+		right_row_delimiter[0] = '}';
+		left_row_delimiter[0] = '{';
+	}
+	else
+	{
+		right_row_delimiter[0] = ']';
+		left_row_delimiter[0] = '[';
+	}
+	// cell content, rows
 	long int i=0;
 	char cell_content[cell_lenght];
 	char *current_char = NULL,*next_char = NULL,*cell_content_char = cell_content,*cell_content_end=&(cell_content[cell_lenght-1]);
 	short int cell_with_sep = 0;
 	short int cell_without_sep = 0;
 	short int row_begin_paresed = 0;
+	// parse
 	writeTo("[\n",output_file_handler);
 	for(;i<=input_file_handler_size;i++)
 	{
@@ -222,12 +272,35 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 		{
 			if(*current_char == text_separator && (*next_char == '\0'  || *next_char == row_separator || *next_char == col_separator))
 			{
-				addCharToCell(&cell_content_char,'"',cell_content_end);
-				addCharToCell(&cell_content_char,*next_char == col_separator?',':']',cell_content_end);
 				addCharToCell(&cell_content_char,'\0',cell_content_end);
-				writeTo(cell_content,output_file_handler);
+				if(keys_number && !keys_parsed)
+				{
+					writeCellToKey(cell_content,&(keys[col]));
+					known_keys++;
+				}
+				else
+				{
+					if(keys_number)
+					{
+						if(col >= known_keys)
+						{
+							addUnknownKeyCol(keys,col,cell_lenght);
+							known_keys++;
+						}
+						writeCellTo(cell_content,keys[col],output_file_handler);
+					}
+					else
+					{
+						writeCellTo(cell_content,NULL,output_file_handler);
+					}
+				}
+				col++;
 				cell_content_char=cell_content;
 				cell_with_sep = 0;
+				if(*next_char == col_separator && ( !keys_number || keys_parsed ))
+				{
+					writeTo(",",output_file_handler);
+				}
 			}
 			else
 			{
@@ -238,28 +311,36 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 		{
 			if(*current_char == '\0'  || *current_char == row_separator || *current_char == col_separator)
 			{
-				addCharToCell(&cell_content_char,'"',cell_content_end);
-				addCharToCell(&cell_content_char,*current_char == col_separator?',':']',cell_content_end);
 				addCharToCell(&cell_content_char,'\0',cell_content_end);
-				writeTo(cell_content,output_file_handler);
-				cell_content_char = cell_content;
-				cell_without_sep = 0;
-				if(*current_char == row_separator)
+				if(keys_number && !keys_parsed)
 				{
-					row_begin_paresed = 0;
-					if(*next_char == '\0' || i+1 == input_file_handler_size)
+					writeCellToKey(cell_content,&(keys[col]));
+					known_keys++;
+				}
+				else
+				{
+					if(keys_number)
 					{
-						break;
+						if(col >= known_keys)
+						{
+							addUnknownKeyCol(keys,col,cell_lenght);
+							known_keys++;
+						}
+						writeCellTo(cell_content,keys[col],output_file_handler);
 					}
 					else
 					{
-						writeTo(",\n",output_file_handler);
+						writeCellTo(cell_content,NULL,output_file_handler);
 					}
 				}
-				else if(*current_char == col_separator)
+				col++;
+				cell_content_char = cell_content;
+				cell_without_sep = 0;
+				if(*current_char == col_separator && (!keys_number || keys_parsed))
 				{
-					i--;
+					writeTo(",",output_file_handler);
 				}
+				i--;
 			}
 			else
 			{
@@ -272,36 +353,83 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 			if(!row_begin_paresed)
 			{
 				row_begin_paresed = 1;
-				addCharToCell(&cell_content_char,'[',cell_content_end);
+				if(!keys_number || keys_parsed)
+				{
+					writeTo(left_row_delimiter,output_file_handler);
+				}
 			}
-			addCharToCell(&cell_content_char,'"',cell_content_end);
 		}
-		else if(*current_char == row_separator)
+		else if(*current_char == row_separator || *current_char == '\0')
 		{
-			row_begin_paresed = 0;
-			if(*next_char == '\0' || i+1 == input_file_handler_size)
+			if(*next_char == row_separator)
 			{
-				break;
+				continue;
 			}
-			else
+			if(row_begin_paresed)
 			{
-				writeTo(",\n",output_file_handler);
+				row_begin_paresed = 0;
+				col = 0;
+				if(*next_char == '\0' || i+1 >= input_file_handler_size)
+				{
+					if(!keys_number || keys_parsed)
+					{
+						writeTo(right_row_delimiter,output_file_handler);
+					}
+					break;
+				}
+				else if(keys_number && !keys_parsed)
+				{
+					keys_parsed = 1;
+				}
+				else
+				{
+					writeTo(right_row_delimiter,output_file_handler);
+					writeTo(",\n",output_file_handler);
+				}
 			}
 		}
 		else if(*current_char == col_separator)
 		{
-			if(!row_begin_paresed)
+			if(!row_begin_paresed && (!keys_number || keys_parsed))
 			{
-				writeTo((*next_char == '\0'  || *next_char == row_separator)?"[\"\"]":"[\"\",",output_file_handler);
-				row_begin_paresed = 1;
+				writeTo(left_row_delimiter,output_file_handler);
 			}
-			else if(*next_char == col_separator)
+			if(!row_begin_paresed || *next_char == col_separator || *next_char == '\0'  || *next_char == row_separator)
 			{
-				writeTo("\"\",",output_file_handler);
-			}
-			else if(*next_char == '\0'  || *next_char == row_separator)
-			{
-				writeTo("\"\"]",output_file_handler);
+				if(!row_begin_paresed)
+				{
+					i--;
+				}
+				if(keys_number)
+				{
+					if(keys_parsed)
+					{
+						if(col >= known_keys)
+						{
+							addUnknownKeyCol(keys,col,cell_lenght);
+							known_keys++;
+						}
+						writeCellTo("",keys[col],output_file_handler);
+					}
+					else
+					{
+						row_begin_paresed = 1;
+						addUnknownKeyCol(keys,col,cell_lenght);
+						known_keys++;
+						col++;
+						continue;
+					}
+				}
+				else
+				{
+					writeCellTo("",NULL,output_file_handler);
+				}
+				col++;
+				if(!row_begin_paresed || *next_char == col_separator)
+				{
+					row_begin_paresed = 1;
+					writeTo(",",output_file_handler);
+				}
 			}
 		}
 		else
@@ -310,9 +438,11 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 			if(!row_begin_paresed)
 			{
 				row_begin_paresed = 1;
-				addCharToCell(&cell_content_char,'[',cell_content_end);
+				if(!keys_number || keys_parsed)
+				{
+					writeTo(left_row_delimiter,output_file_handler);
+				}
 			}
-			addCharToCell(&cell_content_char,'"',cell_content_end);
 			i+=addChar(&cell_content_char,current_char,cell_content_end);
 		}
 	}
@@ -324,15 +454,19 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 		fclose (output_file_handler);
 	}
 	// free memory
+	for(i=0;i<known_keys;i++)
+	{
+		free(keys[i]);
+	}
 	free (file_content);
 	return SUCCESS;
 }
-
 
 /**
  * addChar - add char to chars array
  * @param **char char_pointer pointer to pointer to chars array
  * @param *char current_char pointer to char array created from input file
+ * @param *char cell_content_end pointer to last chars array element
  * @return int - how many chars should be skipped
  */
 int addChar(char * * char_pointer, char * current_char, char * cell_content_end)
@@ -447,6 +581,7 @@ int addChar(char * * char_pointer, char * current_char, char * cell_content_end)
  * addCharToCell - add char to chars array
  * @param **char char_pointer pointer to pointer to chars array
  * @param char char_value char to add to char_pointer array
+ * @param *char cell_content_end pointer to last chars array element
  * @return void
  */
 void addCharToCell(char * * char_pointer, char char_value, char * cell_content_end)
@@ -454,7 +589,7 @@ void addCharToCell(char * * char_pointer, char char_value, char * cell_content_e
 	(*(*char_pointer)) = char_value;
 	if(*char_pointer == cell_content_end)
 	{
-		fputs ("\nTo low -l (chars in single cell) parameter value. Output is corrupted!\n\n",stderr);
+		fputs ("\nTo low -l/--cell-length parameter value. Output is corrupted!\n\n",stderr);
 		exit(ERROR_CELL_LENGTH);
 	}
 	(*char_pointer)++;
@@ -465,6 +600,7 @@ void addCharToCell(char * * char_pointer, char char_value, char * cell_content_e
  * addStringToCell - add multiple chars to chars array
  * @param **char char_pointer pointer to pointer to chars array
  * @param char string_value chars array to add to char_pointer array
+ * @param *char cell_content_end pointer to last chars array element
  * @return void
  */
 void addStringToCell(char * * char_pointer, char string_value[20], char * cell_content_end)
@@ -479,12 +615,60 @@ void addStringToCell(char * * char_pointer, char string_value[20], char * cell_c
 }
 
 /**
+ * addUnknownKeyCol - write "unknown-xx" to keys array
+ * @param **char keys pointer to keys array
+ * @param int col col number
+ * @param int cell_lenght how many chars can exist in single cell
+ * @return void
+ */
+void addUnknownKeyCol(char * * keys, int col, int cell_lenght)
+{
+	char value[cell_lenght];
+	sprintf(value,"unknown-%d",col+1);
+	writeCellToKey(value,&keys[col]);
+}
+
+
+/**
+ * writeCellToKey - write cell value to keys array
+ * @param *char output_string pointer to chars array
+ * @param **char key pointer to pointer in keys array
+ * @return void
+ */
+void writeCellToKey(char * output_string, char * * key)
+{
+	*key = (char*) malloc(sizeof(char)*(strlen(output_string)+1)); // MS windows + 1?
+	sprintf(*key,"%s",output_string);
+}
+
+/**
+ * writeCellTo - write cell value to file or stdout
+ * @param *char output_string pointer to chars array - value
+ * @param *char key_string pointer to chars array - key
+ * @param *FILE output_file_handler handler to output file
+ * @return void
+ */
+void writeCellTo(char * output_string,char * key_string, FILE * output_file_handler)
+{
+	if(key_string != NULL)
+	{
+		writeTo("\"",output_file_handler);
+		writeTo(key_string,output_file_handler);
+		writeTo("\":",output_file_handler);
+	}
+	writeTo("\"",output_file_handler);
+	writeTo(output_string,output_file_handler);
+	writeTo("\"",output_file_handler);
+	return;
+}
+
+/**
  * writeTo - write chars to file or stdout
  * @param *char output_string pointer to chars array
  * @param *FILE output_file_handler handler to output file
  * @return void
  */
-void writeTo(char * output_string,FILE * output_file_handler)
+void writeTo(char * output_string, FILE * output_file_handler)
 {
 	if(output_file_handler != NULL)
 	{
@@ -514,8 +698,11 @@ void help(void)
 \n--col-sep      col separator [default:',']\
 \n-t\
 \n--text-sep     text separator [default:'\"']\
-\n-l             how many chars can exist in single cell. DO NOT SET TO SMALL.\
+\n-l\
+\n--cell-length  how many chars can exist in single cell. DO NOT SET TO SMALL.\
 \n               Escaped utf8 consume 4 chars extra and special chars 1 char extra. [default:1000000]\
+\n-k\
+\n--keys         set maximum keys number and use first row values as keys for values [default:0]\
 \n-h\
 \n--help         print help screen\
 \n-v\
@@ -545,4 +732,3 @@ cvs2json version %s\
 \n\n",PROGRAM_VERSION);
 	return;
 }
-
