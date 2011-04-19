@@ -4,7 +4,9 @@ csv2json
 Description:
 ------------
 
-Writen in C, CSV file to JSON file/string converter with utf8 support ( utf16/32 is not supported).
+Writen in C, CSV file to JSON file/string converter with utf8 support.
+
+Can generate array of arrays or array of objects.
 
 Simple usage:
 -------------
@@ -23,7 +25,7 @@ Complex usage:
 
 or
 
-	csv2json --input-file input.csv --output-file output.json --row-sep $'\n' --col-sep ',' --text-sep '"' -l 9000000 --keys 99
+	csv2json --input-file input.csv --output-file output.json --row-sep $'\n' --col-sep ',' --text-sep '"' --cell-length 9000000 --keys 99
 
 
 Params:
