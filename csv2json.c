@@ -141,7 +141,7 @@ int main(int argc,char **argv)
 			}
 			case '?':
 			{
-				if (optopt == 'i' || optopt == 'o' || optopt == 'c' || optopt == 'r' || optopt == 't' || optopt == 'l' || optopt == 'f')
+				if (optopt == 'i' || optopt == 'o' || optopt == 'c' || optopt == 'r' || optopt == 't' || optopt == 'l' || optopt == 'k')
 				{
 					fprintf (stderr, "Option -%c requires an argument.\n", optopt);
 				}
@@ -163,7 +163,7 @@ int main(int argc,char **argv)
 		}
 	}
 	// check params
-	if(input_file != NULL && ((cell_lenght && cell_lenght > 20) || (!cell_lenght && cell_lenght > 6)))
+	if(input_file != NULL && cell_lenght > 2)
 	{
 		// parse file
 		return parseFile(input_file,output_file,row_separator,col_separator,text_separator,cell_lenght,keys_number);
@@ -175,7 +175,7 @@ int main(int argc,char **argv)
 		{
 			fputs ("Option -i required.\n",stderr);
 		}
-		if(!((cell_lenght && cell_lenght > 20) || (!cell_lenght && cell_lenght > 6)))
+		if(cell_lenght < 3)
 		{
 			fputs ("To low -l/--cell-length parameter value.\n",stderr);
 		}
@@ -262,17 +262,18 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 	short int cell_with_sep = 0;
 	short int cell_without_sep = 0;
 	short int row_begin_paresed = 0;
+	char null = '\0';
 	// parse
 	writeTo("[\n",output_file_handler);
 	for(;i<=input_file_handler_size;i++)
 	{
-		current_char = &file_content[i];
-		next_char = &file_content[i+1];
+		current_char = i < input_file_handler_size ? &file_content[i] : &null;
+		next_char = i+1 < input_file_handler_size ? &file_content[i+1] : &null;
 		if(cell_with_sep)
 		{
-			if(*current_char == text_separator && (*next_char == '\0'  || *next_char == row_separator || *next_char == col_separator))
+			if(*current_char == text_separator && (*next_char == null  || *next_char == row_separator || *next_char == col_separator))
 			{
-				addCharToCell(&cell_content_char,'\0',cell_content_end);
+				addCharToCell(&cell_content_char,null,cell_content_end);
 				if(keys_number && !keys_parsed)
 				{
 					writeCellToKey(cell_content,&(keys[col]));
@@ -309,9 +310,9 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 		}
 		else if(cell_without_sep)
 		{
-			if(*current_char == '\0'  || *current_char == row_separator || *current_char == col_separator)
+			if(*current_char == null  || *current_char == row_separator || *current_char == col_separator)
 			{
-				addCharToCell(&cell_content_char,'\0',cell_content_end);
+				addCharToCell(&cell_content_char,null,cell_content_end);
 				if(keys_number && !keys_parsed)
 				{
 					writeCellToKey(cell_content,&(keys[col]));
@@ -359,7 +360,7 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 				}
 			}
 		}
-		else if(*current_char == row_separator || *current_char == '\0')
+		else if(*current_char == row_separator || *current_char == null)
 		{
 			if(*next_char == row_separator)
 			{
@@ -369,7 +370,7 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 			{
 				row_begin_paresed = 0;
 				col = 0;
-				if(*next_char == '\0' || i+1 >= input_file_handler_size)
+				if(*next_char == null || i+1 >= input_file_handler_size)
 				{
 					if(!keys_number || keys_parsed)
 					{
@@ -394,7 +395,7 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 			{
 				writeTo(left_row_delimiter,output_file_handler);
 			}
-			if(!row_begin_paresed || *next_char == col_separator || *next_char == '\0'  || *next_char == row_separator)
+			if(!row_begin_paresed || *next_char == col_separator || *next_char == null  || *next_char == row_separator)
 			{
 				if(!row_begin_paresed)
 				{
