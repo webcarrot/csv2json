@@ -1,5 +1,7 @@
+# Maintainer: webcarrot <admin at webcarrot dot pl>
+
 pkgname=csv2json
-pkgver=20121009
+pkgver=0.4
 pkgrel=1
 pkgdesc="Writen in C, CSV file to JSON file/string converter with utf8 support."
 arch=('i686' 'x86_64')
@@ -24,5 +26,5 @@ build() {
 
 package() {
   cd ${srcdir}/${_gitname}
-  make DESTDIR="${pkgdir}" install
+  make DESTDIR="${pkgdir}" BINDIR="/usr/bin" install
 }
