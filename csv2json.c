@@ -26,17 +26,19 @@
 #include <string.h>
 #include <getopt.h>
 
+int isprint ( int c );
+
 // return codes
-const SUCCESS = 0;
-const ERROR_BAD_ARG = 1;
-const ERROR_INVALID_INPUT_FILE = 2;
-const ERROR_INVALID_OUTPUT_FILE = 3;
-const ERROR_MEMORY = 4;
-const ERROR_READING_FILE = 5;
-const ERROR_CELL_LENGTH = 6;
+const int SUCCESS = 0;
+const int ERROR_BAD_ARG = 1;
+const int ERROR_INVALID_INPUT_FILE = 2;
+const int ERROR_INVALID_OUTPUT_FILE = 3;
+const int ERROR_MEMORY = 4;
+const int ERROR_READING_FILE = 5;
+const int ERROR_CELL_LENGTH = 6;
 
 // version
-const char PROGRAM_VERSION[32] = "0.3";
+const char PROGRAM_VERSION[32] = "0.4";
 
 // main functions
 int main(int argc,char **argv);
