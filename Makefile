@@ -1,3 +1,5 @@
+# Simple Makefile
+
 all:
 	cc ./csv2json.c -o ./csv2json;
 
