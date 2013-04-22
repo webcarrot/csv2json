@@ -5,7 +5,7 @@ INSTALL_DIR = $(INSTALL) -d
 UNINSTALL_PROGRAM = rm
 DESTDIR = /
 BINDIR = /usr/bin/
-CFLAGS = -c -Wall
+CFLAGS = -Wall
 
 .PHONY: all install uninstall clean
 
