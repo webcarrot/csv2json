@@ -36,16 +36,17 @@ const int ERROR_INVALID_OUTPUT_FILE = 3;
 const int ERROR_MEMORY = 4;
 const int ERROR_READING_FILE = 5;
 const int ERROR_CELL_LENGTH = 6;
+const int ERROR_ENCODING = 7;
 
 // version
-const char PROGRAM_VERSION[32] = "0.4";
+const char PROGRAM_VERSION[32] = "0.5";
 
 // main functions
 int main(int argc,char **argv);
-int parseFile(char *input_file,char *output_file,char row_separator,char col_separator,char text_separator,int cell_lenght,short int keys_number);
+int parseFile(char *input_file,char *output_file,char row_separator,char col_separator,char text_separator,int cell_lenght,short int keys_number, unsigned char escape);
 
 // char functions
-int addChar(char * * char_pointer, char  * current_char, char * cell_content_end);
+int addChar(char * * char_pointer, char  * current_char, char * cell_content_end, long unsigned int to_read, unsigned char escape);
 void addCharToCell(char * * char_pointer, char char_value, char * cell_content_end);
 void addStringToCell(char * * char_pointer, char string_value[10], char * cell_content_end);
 
@@ -63,7 +64,6 @@ void version(void);
 
 /**
  * main - read params etc.
- * @return int
  */
 int main(int argc,char **argv)
 {
@@ -75,6 +75,7 @@ int main(int argc,char **argv)
 	char text_separator = '"';
 	int cell_lenght = 1000000;
 	short int keys_number = 0;
+  unsigned char escape = 0;
 	// get params
 	int c;
 	int option_index = 0;
@@ -88,11 +89,12 @@ int main(int argc,char **argv)
 		{"text-sep",     required_argument, 0, 't'},
 		{"cell-length",  required_argument, 0, 'l'},
  		{"keys",         required_argument, 0, 'k'},
+    {"escape",       no_argument,       0, 'e'},
 		{"help",         no_argument,       0, 'h'},
 		{"version",      no_argument,       0, 'v'},
 		{0, 0, 0, 0}
 	};
-	while ((c = getopt_long(argc, argv, "i:o:c:r:t:l:k:hv",long_options, &option_index)) != -1)
+	while ((c = getopt_long(argc, argv, "i:o:c:r:t:l:k:ehv",long_options, &option_index)) != -1)
 	{
 		switch (c)
 		{
@@ -105,6 +107,11 @@ int main(int argc,char **argv)
 			{
 				version();
 				return SUCCESS;
+			}
+      case 'e':
+			{
+				escape = 1;
+        break;
 			}
 			case 'k':
 			{
@@ -168,7 +175,7 @@ int main(int argc,char **argv)
 	if(input_file != NULL && cell_lenght > 2)
 	{
 		// parse file
-		return parseFile(input_file,output_file,row_separator,col_separator,text_separator,cell_lenght,keys_number);
+		return parseFile(input_file,output_file,row_separator,col_separator,text_separator,cell_lenght,keys_number,escape);
 	}
 	else
 	{
@@ -188,16 +195,8 @@ int main(int argc,char **argv)
 
 /**
  * parseFile - try to load input file to char array and parse it
- * @param *char input_file path to input file
- * @param *char output_file path to output file [default:NULL]
- * @param char row_separator row separator [default:'\n']
- * @param char col_separator col separator [default:',']
- * @param char text_separator text separator [default:'"']
- * @param int cell_lenght how many chars can exist in single cell [default:1000000]
- * @param short int keys_number set maximum keys number and use first row values as keys for values [default:0]
- * @return int
  */
-int parseFile(char *input_file,char *output_file,char row_separator,char col_separator,char text_separator,int cell_lenght,short int keys_number)
+int parseFile(char *input_file,char *output_file,char row_separator,char col_separator,char text_separator,int cell_lenght,short int keys_number, unsigned char escape)
 {
 	// input file
 	FILE * input_file_handler = NULL, * output_file_handler = NULL;
@@ -206,7 +205,7 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 	input_file_handler = fopen ( input_file , "rb" );
 	if (input_file_handler==NULL)
 	{
-		fprintf (stderr, "Cannot open %s file", input_file);
+		fprintf (stderr, "Cannot open %s file\n", input_file);
 		return ERROR_INVALID_INPUT_FILE;
 	}
 	// obtain file size:
@@ -217,23 +216,42 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 	file_content = (char*) malloc (sizeof(char)*input_file_handler_size);
 	if (file_content == NULL)
 	{
-		fputs ("Memory error",stderr);
+		fputs ("Memory error\n",stderr);
 		return ERROR_MEMORY;
 	}
 	// copy the file into the file_content:
 	if (fread(file_content,1,input_file_handler_size,input_file_handler) != input_file_handler_size)
 	{
-		fputs ("Reading file error",stderr);
+		fputs ("Reading file error\n",stderr);
 		return ERROR_READING_FILE;
 	}
 	fclose (input_file_handler);
+  // detect utf16-32
+  if (
+    input_file_handler_size > 3 &&
+    (
+      // standard utf16/32 headers
+      (
+        ((unsigned char)file_content[0]) == 0xFF &&
+        ((unsigned char)file_content[1]) == 0xFE
+      ) ||
+      // try to detect LE/BE mode
+      ((unsigned char)file_content[0]) == 0x00 ||
+      ((unsigned char)file_content[1]) == 0x00 ||
+      ((unsigned char)file_content[2]) == 0x00
+    )
+  ) {
+    fputs ("Input encoding error - look like UTF-16 or UTF-32\n", stderr);
+    return ERROR_ENCODING;
+  }
+
 	// output file
 	if(output_file != NULL)
 	{
 		output_file_handler = fopen ( output_file , "w" );
 		if (output_file_handler==NULL)
 		{
-			fprintf (stderr, "Cannot write to %s file", output_file);
+			fprintf (stderr, "Cannot write to %s file\n", output_file);
 			return ERROR_INVALID_OUTPUT_FILE;
 		}
 	}
@@ -258,7 +276,8 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 		left_row_delimiter[0] = '[';
 	}
 	// cell content, rows
-	long int i=0;
+	long unsigned int i=0;
+  long unsigned int to_read=0;
 	char cell_content[cell_lenght];
 	char *current_char = NULL,*next_char = NULL,*cell_content_char = cell_content,*cell_content_end=&(cell_content[cell_lenght-1]);
 	short int cell_with_sep = 0;
@@ -269,8 +288,9 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 	writeTo("[\n",output_file_handler);
 	for(;i<=input_file_handler_size;i++)
 	{
-		current_char = i < input_file_handler_size ? &file_content[i] : &null;
-		next_char = i+1 < input_file_handler_size ? &file_content[i+1] : &null;
+    to_read = i < input_file_handler_size ? input_file_handler_size - i : 0;
+		current_char = to_read > 0 ? &file_content[i] : &null;
+		next_char = to_read > 1 ? &file_content[i+1] : &null;
 		if(cell_with_sep)
 		{
 			if(*current_char == text_separator && (*next_char == null  || *next_char == row_separator || *next_char == col_separator))
@@ -307,7 +327,7 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 			}
 			else
 			{
-				i+=addChar(&cell_content_char,current_char,cell_content_end);
+				i+=addChar(&cell_content_char,current_char,cell_content_end,to_read,escape);
 			}
 		}
 		else if(cell_without_sep)
@@ -347,7 +367,7 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 			}
 			else
 			{
-				i+=addChar(&cell_content_char,current_char,cell_content_end);
+				i+=addChar(&cell_content_char,current_char,cell_content_end,to_read,escape);
 			}
 		}
 		else if(*current_char == text_separator)
@@ -446,7 +466,7 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 					writeTo(left_row_delimiter,output_file_handler);
 				}
 			}
-			i+=addChar(&cell_content_char,current_char,cell_content_end);
+			i+=addChar(&cell_content_char,current_char,cell_content_end,to_read,escape);
 		}
 	}
 	writeTo("\n]\n",output_file_handler);
@@ -467,12 +487,8 @@ int parseFile(char *input_file,char *output_file,char row_separator,char col_sep
 
 /**
  * addChar - add char to chars array
- * @param **char char_pointer pointer to pointer to chars array
- * @param *char current_char pointer to char array created from input file
- * @param *char cell_content_end pointer to last chars array element
- * @return int - how many chars should be skipped
  */
-int addChar(char * * char_pointer, char * current_char, char * cell_content_end)
+int addChar(char * * char_pointer, char * current_char, char * cell_content_end, long unsigned int to_read, unsigned char escape)
 {
 	switch(*current_char)
 	{
@@ -521,9 +537,6 @@ int addChar(char * * char_pointer, char * current_char, char * cell_content_end)
 		}
 		default:
 		{
-			/**
-			* @todo add support for other chars
-			*/
 			break;
 		}
 	}
@@ -532,67 +545,87 @@ int addChar(char * * char_pointer, char * current_char, char * cell_content_end)
 		addCharToCell(char_pointer,*current_char,cell_content_end);
 		return 0;
 	}
-	else if ((*current_char & 0xE0) == 0xC0)
+  unsigned char u8 = (unsigned char)(*current_char);
+	if ((to_read > 1) && (u8 & 0xE0) == 0xC0)
 	{
-		char utf16[7];
-		sprintf(
-			utf16,
-			"\\u%02X%02X",
-			(0x07 & *current_char >> 2),
-			((0xC0 & *current_char << 6) | (0x3F & *(current_char+1)))
-		);
-		addStringToCell(char_pointer,utf16,cell_content_end);
-		return 1;
+    if (escape == 0) {
+      addCharToCell(char_pointer,*current_char,cell_content_end);
+      addCharToCell(char_pointer,*(current_char+1),cell_content_end);
+    } else {
+  		char utf8[7];
+  		sprintf(
+  			utf8,
+  			"\\u%02X%02X",
+  			(0x07 & *current_char >> 2),
+  			((0xC0 & *current_char << 6) | (0x3F & *(current_char+1)))
+  		);
+  		addStringToCell(char_pointer,utf8,cell_content_end);
+    }
+    return 1;
 	}
-	else if((*current_char & 0xF0) == 0xE0)
+	else if((to_read > 2) && (u8 & 0xF0) == 0xE0)
 	{
-		char utf16[7];
-		sprintf(
-			utf16,
-			"\\u%02X%02X",
-			((0xF0 & *current_char << 4) | (0x0F & *(current_char+1) >> 2)),
-			((0xC0 & *(current_char+1) << 6) | (0x7F & *(current_char+2)))
-		);
-		addStringToCell(char_pointer,utf16,cell_content_end);
-		return 2;
+    if (escape == 0) {
+      addCharToCell(char_pointer,*current_char,cell_content_end);
+      addCharToCell(char_pointer,*(current_char+1),cell_content_end);
+      addCharToCell(char_pointer,*(current_char+2),cell_content_end);
+    } else {
+  		char utf8[7];
+  		sprintf(
+  			utf8,
+  			"\\u%02X%02X",
+  			((0xF0 & *current_char << 4) | (0x0F & *(current_char+1) >> 2)),
+  			((0xC0 & *(current_char+1) << 6) | (0x7F & *(current_char+2)))
+  		);
+  		addStringToCell(char_pointer,utf8,cell_content_end);
+    }
+    return 2;
 	}
-	else if((*current_char & 0xF8) == 0xF0)
+	else if((to_read > 3) && (u8 & 0xF8) == 0xF0)
 	{
-		/**
-		 * @todo add support for utf?? chars
-		 */
+    if (escape == 0) {
+      addCharToCell(char_pointer,*current_char,cell_content_end);
+      addCharToCell(char_pointer,*(current_char+1),cell_content_end);
+      addCharToCell(char_pointer,*(current_char+2),cell_content_end);
+      addCharToCell(char_pointer,*(current_char+3),cell_content_end);
+    }
 		return 3;
 	}
-	else if((*current_char & 0xFC) == 0xF8)
+	else if((to_read > 4) && (u8 & 0xFC) == 0xF8)
 	{
-		/**
-		 * @todo add support for utf?? chars
-		 */
+    if (escape == 0) {
+      addCharToCell(char_pointer,*current_char,cell_content_end);
+      addCharToCell(char_pointer,*(current_char+1),cell_content_end);
+      addCharToCell(char_pointer,*(current_char+2),cell_content_end);
+      addCharToCell(char_pointer,*(current_char+3),cell_content_end);
+      addCharToCell(char_pointer,*(current_char+4),cell_content_end);
+    }
 		return 4;
 	}
-	else if((*current_char & 0xFE) == 0xFC)
+	else if((to_read > 5) && (u8 & 0xFE) == 0xFC)
 	{
-		/**
-		 * @todo add support for utf?? chars
-		 */
+    if (escape == 0) {
+      addCharToCell(char_pointer,*current_char,cell_content_end);
+      addCharToCell(char_pointer,*(current_char+1),cell_content_end);
+      addCharToCell(char_pointer,*(current_char+2),cell_content_end);
+      addCharToCell(char_pointer,*(current_char+3),cell_content_end);
+      addCharToCell(char_pointer,*(current_char+4),cell_content_end);
+      addCharToCell(char_pointer,*(current_char+5),cell_content_end);
+    }
 		return 5;
 	}
-	return 0;
+  return 0;
 }
 
 /**
  * addCharToCell - add char to chars array
- * @param **char char_pointer pointer to pointer to chars array
- * @param char char_value char to add to char_pointer array
- * @param *char cell_content_end pointer to last chars array element
- * @return void
  */
 void addCharToCell(char * * char_pointer, char char_value, char * cell_content_end)
 {
 	(*(*char_pointer)) = char_value;
 	if(*char_pointer == cell_content_end)
 	{
-		fputs ("\nTo low -l/--cell-length parameter value. Output is corrupted!\n\n",stderr);
+		fputs ("\nTo low -l/--cell-length parameter value. Output is corrupted!\n",stderr);
 		exit(ERROR_CELL_LENGTH);
 	}
 	(*char_pointer)++;
@@ -601,10 +634,6 @@ void addCharToCell(char * * char_pointer, char char_value, char * cell_content_e
 
 /**
  * addStringToCell - add multiple chars to chars array
- * @param **char char_pointer pointer to pointer to chars array
- * @param char string_value chars array to add to char_pointer array
- * @param *char cell_content_end pointer to last chars array element
- * @return void
  */
 void addStringToCell(char * * char_pointer, char string_value[20], char * cell_content_end)
 {
@@ -619,10 +648,6 @@ void addStringToCell(char * * char_pointer, char string_value[20], char * cell_c
 
 /**
  * addUnknownKeyCol - write "unknown-xx" to keys array
- * @param **char keys pointer to keys array
- * @param int col col number
- * @param int cell_lenght how many chars can exist in single cell
- * @return void
  */
 void addUnknownKeyCol(char * * keys, int col, int cell_lenght)
 {
@@ -634,9 +659,6 @@ void addUnknownKeyCol(char * * keys, int col, int cell_lenght)
 
 /**
  * writeCellToKey - write cell value to keys array
- * @param *char output_string pointer to chars array
- * @param **char key pointer to pointer in keys array
- * @return void
  */
 void writeCellToKey(char * output_string, char * * key)
 {
@@ -646,10 +668,6 @@ void writeCellToKey(char * output_string, char * * key)
 
 /**
  * writeCellTo - write cell value to file or stdout
- * @param *char output_string pointer to chars array - value
- * @param *char key_string pointer to chars array - key
- * @param *FILE output_file_handler handler to output file
- * @return void
  */
 void writeCellTo(char * output_string,char * key_string, FILE * output_file_handler)
 {
@@ -667,9 +685,6 @@ void writeCellTo(char * output_string,char * key_string, FILE * output_file_hand
 
 /**
  * writeTo - write chars to file or stdout
- * @param *char output_string pointer to chars array
- * @param *FILE output_file_handler handler to output file
- * @return void
  */
 void writeTo(char * output_string, FILE * output_file_handler)
 {
@@ -686,7 +701,6 @@ void writeTo(char * output_string, FILE * output_file_handler)
 
 /**
  * help - print help info
- * @return void
  */
 void help(void)
 {
@@ -706,6 +720,8 @@ void help(void)
 \n               Escaped utf8 consume 4 chars extra and special chars 1 char extra. [default:1000000]\
 \n-k\
 \n--keys         set maximum keys number and use first row values as keys for values [default:0]\
+\n-e\
+\n--escape       escape UTF-8 (some 'long' chars are not supported) [flag:default:false]\
 \n-h\
 \n--help         print help screen\
 \n-v\
@@ -715,7 +731,6 @@ void help(void)
 
 /**
  * version - print version info
- * @return void
  */
 void version(void)
 {
